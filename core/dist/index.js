@@ -28,12 +28,27 @@ const d3 = __importStar(require("d3"));
 const d3_svg_annotation_1 = require("d3-svg-annotation");
 const fc = __importStar(require("d3fc"));
 const utils_1 = require("./utils");
+const annotationTypeToAnnotation = {
+    annotationLabel: d3_svg_annotation_1.annotationLabel,
+    annotationCallout: d3_svg_annotation_1.annotationCallout,
+    annotationCalloutElbow: d3_svg_annotation_1.annotationCalloutElbow,
+    annotationCalloutCurve: d3_svg_annotation_1.annotationCalloutCurve,
+    annotationCalloutCircle: d3_svg_annotation_1.annotationCalloutCircle,
+    annotationCalloutRect: d3_svg_annotation_1.annotationCalloutRect,
+    annotationXYThreshold: d3_svg_annotation_1.annotationXYThreshold,
+    annotationBadge: d3_svg_annotation_1.annotationBadge
+};
+const annotationCurve = {
+    curve: d3.curveBasis,
+    linear: d3.curveLinear,
+    default: undefined,
+    step: d3.curveStep
+};
 class ClusterViz {
     constructor(options) {
         this.nodes = [];
         this.edges = [];
-        this.createAnnotation = options.createAnnotation;
-        this.nodeColor = options.nodeColor || (() => 'rgb(0,0,0)');
+        this.options = options;
         this.element = d3.select(options.elementId);
         this.registerZoom();
         this.registerPointer();
@@ -44,11 +59,12 @@ class ClusterViz {
         this.yScale = d3.scaleLinear().domain([-1, 1]);
         this.xScaleOriginal = this.xScale.copy();
         this.yScaleOriginal = this.yScale.copy();
+        const nodeSize = this.options.nodeSize || 1;
         this.pointSeries = fc
             .seriesWebglPoint()
             .equals((previousData, currentData) => previousData === currentData)
             .pixelRatio(devicePixelRatio)
-            .size((d) => d.size || 1)
+            .size(nodeSize)
             .crossValue((d) => d.x)
             .mainValue((d) => d.y);
         this.lineSeries = fc
@@ -60,7 +76,10 @@ class ClusterViz {
             .yScale(this.yScale)
             .crossValue((d) => d.x)
             .mainValue((d) => d.y);
-        const annotationSeries = this.seriesSvgAnnotation().notePadding(15).type(d3_svg_annotation_1.annotationCallout);
+        const annotationSeries = this.seriesSvgAnnotation()
+            .notePadding(this.options.annotationNotePadding || 15)
+            .textWrap(this.options.annotationTextWrap || 120)
+            .type(annotationTypeToAnnotation[this.options.annotationType]);
         this.chart = fc
             .chartCartesian(this.xScale, this.yScale)
             .webglPlotArea(fc
@@ -122,9 +141,10 @@ class ClusterViz {
         return series;
     }
     registerColor() {
+        const colorFunc = this.options.nodeColor || (() => 'rgb(0,0,0)');
         const fillColor = fc
             .webglFillColor()
-            .value((d) => (0, utils_1.webglColor)(this.nodeColor(d)))
+            .value((d) => (0, utils_1.webglColor)(colorFunc(d)))
             .data(this.nodes);
         this.pointSeries.decorate((program) => fillColor(program));
         this.lineSeries.decorate((program) => {
@@ -147,7 +167,11 @@ class ClusterViz {
         });
     }
     createAnnotationData(datapoint) {
-        return Object.assign(Object.assign({}, this.createAnnotation(datapoint)), { x: datapoint.x, y: datapoint.y });
+        let annotation = this.options.createAnnotation(datapoint);
+        if (annotation.connector) {
+            annotation.connector.curve = annotationCurve[annotation.connector.curve];
+        }
+        return Object.assign(Object.assign({}, annotation), { x: datapoint.x, y: datapoint.y });
     }
     registerPointer() {
         this.pointer = fc.pointer().on('point', ([coord]) => {

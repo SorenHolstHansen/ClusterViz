@@ -1,7 +1,38 @@
 import * as d3 from 'd3';
-import { annotation, annotationCallout } from 'd3-svg-annotation';
+import {
+	annotation,
+	annotationBadge,
+	annotationCallout,
+	annotationCalloutCircle,
+	annotationCalloutCurve,
+	annotationCalloutElbow,
+	annotationCalloutRect,
+	annotationLabel,
+	annotationXYThreshold
+} from 'd3-svg-annotation';
 import * as fc from 'd3fc';
 import { webglColor } from './utils';
+
+type AnnotationType =
+	| 'annotationLabel'
+	| 'annotationCallout'
+	| 'annotationCalloutElbow'
+	| 'annotationCalloutCurve'
+	| 'annotationCalloutCircle'
+	| 'annotationCalloutRect'
+	| 'annotationXYThreshold'
+	| 'annotationBadge';
+
+const annotationTypeToAnnotation = {
+	annotationLabel: annotationLabel,
+	annotationCallout: annotationCallout,
+	annotationCalloutElbow: annotationCalloutElbow,
+	annotationCalloutCurve: annotationCalloutCurve,
+	annotationCalloutCircle: annotationCalloutCircle,
+	annotationCalloutRect: annotationCalloutRect,
+	annotationXYThreshold: annotationXYThreshold,
+	annotationBadge: annotationBadge
+};
 
 type ClusterVizOptions<T> = {
 	/**
@@ -10,6 +41,16 @@ type ClusterVizOptions<T> = {
 	 * If this is not defined, you should define the element
 	 */
 	elementId: string;
+	/**
+	 * See https://d3-annotation.susielu.com/
+	 * for the different types
+	 */
+	annotationType: AnnotationType;
+	annotationNotePadding?: number;
+	annotationTextWrap?: number;
+	/**
+	 * Create the annotation that you see when you hover over the node
+	 */
 	createAnnotation: (node: ClusterVizNode<T>) => Annotation;
 	/**
 	 * Generate a color from a node. This can return any color string, e.g.
@@ -25,18 +66,28 @@ type ClusterVizOptions<T> = {
 	 * - #fea2
 	 * - steelblue
 	 */
-	nodeColor: (node: ClusterVizNode<T>) => string;
+	nodeColor?: (node: ClusterVizNode<T>) => string;
+	/**
+	 * The size of a node. Defaults to 1
+	 */
+	nodeSize?: number | ((node: ClusterVizNode<T>) => number);
 };
 
+/**
+ * A point is a position inside the chart
+ */
 type Point = {
-	/** Should be a number between -1 and 1 */
+	/**
+	 * Should be a number between -1 and 1
+	 */
 	x: number;
-	/** Should be a number between -1 and 1 */
+	/**
+	 * Should be a number between -1 and 1
+	 */
 	y: number;
 };
 
-type ClusterVizNode<T> = Point & {
-	size?: number;
+export type ClusterVizNode<T> = Point & {
 	/** Any custom data on the node */
 	data: T;
 };
@@ -46,21 +97,54 @@ type ClusterVizEdge = {
 	target: Point;
 };
 
-type AnnotationNote = {
-	label: string;
-	bgPadding: number;
-	title: string;
+type BgPadding = number | { top: number; left: number; right: number; bottom: number };
+
+type AnnotationCurveType = 'curve' | 'linear' | 'default' | 'step';
+const annotationCurve: { [key in AnnotationCurveType]: d3.CurveFactory | undefined } = {
+	curve: d3.curveBasis,
+	linear: d3.curveLinear,
+	default: undefined,
+	step: d3.curveStep
 };
 
 type Annotation = {
-	note: AnnotationNote;
+	note: {
+		label: string;
+		bgPadding?: BgPadding;
+		title: string;
+		align?: 'middle' | 'dynamic' | 'top' | 'bottom' | 'left' | 'right';
+		lineType?: 'vertical' | 'horizontal';
+		orientation?: 'leftRight' | 'topBottom';
+	};
 	dx: number;
 	dy: number;
+	/** Only needed if annotationType is "annotationCalloutCurve" */
+	connector?: {
+		type?: 'elbow' | 'curve';
+		curve?: AnnotationCurveType;
+		points?: 1 | 2 | 3 | 4;
+		end?: 'arrow' | 'dot' | undefined;
+	};
+	subject?: {
+		/** Only used if annotationType is "annotationCalloutCircle" or "annotationBadge" */
+		radius?: number;
+		/** Only used if annotationType is "annotationCalloutCircle" */
+		radiusPadding?: number;
+		/** Only used if annotationType is "annotationCalloutRect" */
+		width?: number;
+		/** Only used if annotationType is "annotationCalloutRect" */
+		height?: number;
+		/** Only used if annotationType is "annotationXYThreshold" */
+		x1?: number;
+		/** Only used if annotationType is "annotationXYThreshold" */
+		x2?: number;
+		/** Only used if annotationType is "annotationBadge" */
+		text?: string;
+	};
 };
 
 export class ClusterViz<CustomData> {
-	private createAnnotation: (node: ClusterVizNode<CustomData>) => Annotation;
-	private nodeColor: (node: ClusterVizNode<CustomData>) => string;
+	private options: ClusterVizOptions<CustomData>;
 	private xScale: d3.ScaleLinear<number, number, never>;
 	private yScale: d3.ScaleLinear<number, number, never>;
 	private xScaleOriginal: d3.ScaleLinear<number, number, never>;
@@ -77,8 +161,7 @@ export class ClusterViz<CustomData> {
 	private annotation: Record<string, any> | undefined;
 
 	constructor(options: ClusterVizOptions<CustomData>) {
-		this.createAnnotation = options.createAnnotation;
-		this.nodeColor = options.nodeColor || (() => 'rgb(0,0,0)');
+		this.options = options;
 		this.element = d3.select(options.elementId);
 		this.registerZoom();
 		this.registerPointer();
@@ -91,25 +174,29 @@ export class ClusterViz<CustomData> {
 		this.xScaleOriginal = this.xScale.copy();
 		this.yScaleOriginal = this.yScale.copy();
 
+		const nodeSize = this.options.nodeSize || 1;
 		this.pointSeries = fc
 			.seriesWebglPoint()
 			.equals((previousData: any, currentData: any) => previousData === currentData)
 			.pixelRatio(devicePixelRatio)
-			.size((d: ClusterVizNode<CustomData>) => d.size || 1)
+			.size(nodeSize)
 			.crossValue((d: ClusterVizNode<CustomData>) => d.x)
 			.mainValue((d: ClusterVizNode<CustomData>) => d.y);
 
 		this.lineSeries = fc
 			.seriesWebglLine()
-			.equals((a, b) => a === b)
-			.defined((_, i) => (i + 1) % 3 !== 0)
+			.equals((a: any, b: any) => a === b)
+			.defined((_, i: number) => (i + 1) % 3 !== 0)
 			.lineWidth(0.5)
 			.xScale(this.xScale)
 			.yScale(this.yScale)
 			.crossValue((d: ClusterVizNode<CustomData>) => d.x)
 			.mainValue((d: ClusterVizNode<CustomData>) => d.y);
 
-		const annotationSeries = this.seriesSvgAnnotation().notePadding(15).type(annotationCallout);
+		const annotationSeries = this.seriesSvgAnnotation()
+			.notePadding(this.options.annotationNotePadding || 15)
+			.textWrap(this.options.annotationTextWrap || 120)
+			.type(annotationTypeToAnnotation[this.options.annotationType]);
 
 		this.chart = fc
 			.chartCartesian(this.xScale, this.yScale)
@@ -195,9 +282,10 @@ export class ClusterViz<CustomData> {
 	}
 
 	private registerColor() {
+		const colorFunc = this.options.nodeColor || (() => 'rgb(0,0,0)');
 		const fillColor = fc
 			.webglFillColor()
-			.value((d) => webglColor(this.nodeColor(d)))
+			.value((d) => webglColor(colorFunc(d)))
 			.data(this.nodes);
 
 		this.pointSeries.decorate((program) => fillColor(program));
@@ -224,8 +312,12 @@ export class ClusterViz<CustomData> {
 	}
 
 	private createAnnotationData(datapoint: ClusterVizNode<CustomData>): Record<string, any> {
+		let annotation: any = this.options.createAnnotation(datapoint);
+		if (annotation.connector) {
+			annotation.connector.curve = annotationCurve[annotation.connector.curve];
+		}
 		return {
-			...this.createAnnotation(datapoint),
+			...annotation,
 			x: datapoint.x,
 			y: datapoint.y
 		};
@@ -271,6 +363,9 @@ export class ClusterViz<CustomData> {
 		this.edges = this.edges.concat(edges);
 	}
 
+	/**
+	 * Because of the way d3fc makes lines, we have to make lines between two edges, and to avoid displaying those, we make every n mod 2 node double, and hide that later in the displaying process
+	 */
 	private normalizeEdges(edges: ClusterVizEdge[]): Point[] {
 		let normalizedEdges: Point[] = [];
 		edges.forEach((edge) => {

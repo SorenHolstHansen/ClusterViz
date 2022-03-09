@@ -1,0 +1,1 @@
+{"version":3,"file":"annotation.js","sourceRoot":"","sources":["../src/annotation.ts"],"names":[],"mappings":";;AAAA,yDAS2B;AAY3B,MAAM,0BAA0B,GAAG;IAClC,eAAe,EAAE,mCAAe;IAChC,iBAAiB,EAAE,qCAAiB;IACpC,sBAAsB,EAAE,0CAAsB;IAC9C,sBAAsB,EAAE,0CAAsB;IAC9C,uBAAuB,EAAE,2CAAuB;IAChD,qBAAqB,EAAE,yCAAqB;IAC5C,qBAAqB,EAAE,yCAAqB;IAC5C,eAAe,EAAE,mCAAe;CAChC,CAAC"}

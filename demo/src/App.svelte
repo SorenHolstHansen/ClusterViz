@@ -1,20 +1,12 @@
 <script lang="ts">
-	import { ClusterViz } from '@cluster-viz/core';
+	import { ClusterViz, ClusterVizNode } from '@cluster-viz/core';
 	import { onMount } from 'svelte';
 	import { data } from './data';
 
-	let viz;
-
-	let maxValues = data.reduce((prev, current) => {
-		let max = JSON.parse(JSON.stringify(prev));
-		if (current.x < max.x) {
-			max.x = current.x;
-		}
-		if (current.y < max.y) {
-			max.y = current.y;
-		}
-		return max;
-	});
+	type CustomData = {
+		lang: string;
+		year: number;
+	};
 
 	function createEdges() {
 		let countryNodes = {};
@@ -41,28 +33,31 @@
 	}
 
 	onMount(() => {
-		viz = new ClusterViz({
+		let viz = new ClusterViz<CustomData>({
 			elementId: '#chart',
-			createAnnotation: (d) => ({
+			createAnnotation: (node) => ({
 				note: {
-					label: d.lang + ' ' + d.year,
+					label: node.data.lang + ' ' + node.data.year,
 					bgPadding: 5,
-					title: d.lang
+					title: node.data.lang
 				},
 				dx: 20,
 				dy: 20
 			}),
 			nodeColor: (node) => {
-				let h = (Math.round(((node.year - 1850) / 150) * 100) + 0) % 255;
+				let h = (Math.round(((node.data.year - 1850) / 150) * 100) + 0) % 255;
 				return `hsl(${h}, 80%, 50%)`;
-			}
+			},
+			nodeSize: 50,
+			annotationType: 'annotationLabel'
 		});
-		let newData = data.map((v) => ({
+		let newData: ClusterVizNode<CustomData>[] = data.map((v) => ({
 			x: v.x / 50,
 			y: v.y / 50,
-			year: v.year,
-			size: 20,
-			lang: v.lang
+			data: {
+				year: v.year,
+				lang: v.lang
+			}
 		}));
 		viz.addNodes(newData);
 		let edges = createEdges();
