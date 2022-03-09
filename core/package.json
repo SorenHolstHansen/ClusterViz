@@ -1,0 +1,23 @@
+{
+	"name": "@cluster-viz/core",
+	"version": "1.0.0",
+	"description": "",
+	"main": "dist/index.js",
+	"scripts": {
+		"build": "tsc",
+		"watch": "tsc -w"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"devDependencies": {
+		"@types/d3": "^7.1.0",
+		"@types/node": "^14.14.22",
+		"typescript": "^4.1.3"
+	},
+	"dependencies": {
+		"d3": "^7.3.0",
+		"d3-svg-annotation": "^2.5.1",
+		"d3fc": "^15.2.4"
+	}
+}

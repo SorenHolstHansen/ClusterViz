@@ -1,0 +1,12 @@
+{
+	"name": "cluster-viz",
+	"private": true,
+	"workspaces": [
+		"core",
+		"demo"
+	],
+	"scripts": {
+		"lint": "prettier --write \"**/*.{ts,tsx,md}\""
+	},
+	"devDependencies": {}
+}
