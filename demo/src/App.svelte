@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	import { ClusterViz } from '@cluster-viz/core';
 	import { onMount } from 'svelte';
 	import { data } from './data';
