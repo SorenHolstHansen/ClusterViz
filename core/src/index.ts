@@ -71,6 +71,7 @@ type ClusterVizOptions<T> = {
 	 * The size of a node. Defaults to 1
 	 */
 	nodeSize?: number | ((node: ClusterVizNode<T>) => number);
+	edgeWidth?: number;
 };
 
 /**
@@ -187,7 +188,7 @@ export class ClusterViz<CustomData> {
 			.seriesWebglLine()
 			.equals((a: any, b: any) => a === b)
 			.defined((_, i: number) => (i + 1) % 3 !== 0)
-			.lineWidth(0.5)
+			.lineWidth(this.options.edgeWidth || 0.5)
 			.xScale(this.xScale)
 			.yScale(this.yScale)
 			.crossValue((d: ClusterVizNode<CustomData>) => d.x)
@@ -386,5 +387,12 @@ export class ClusterViz<CustomData> {
 				clustering: { nodes: this.nodes, edges: this.edges }
 			})
 			.call(this.chart);
+	}
+
+	/**
+	 * Removes the clusterViz
+	 */
+	drop() {
+		this.element.selectChildren().remove();
 	}
 }

@@ -1,1 +1,0 @@
-export declare type AnnotationType = 'annotationLabel' | 'annotationCallout' | 'annotationCalloutElbow' | 'annotationCalloutCurve' | 'annotationCalloutCircle' | 'annotationCalloutRect' | 'annotationXYThreshold' | 'annotationBadge';
