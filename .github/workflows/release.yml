@@ -1,4 +1,4 @@
-name: Publish package to NPM
+name: Publish Release
 on:
   workflow_dispatch:
     inputs:
@@ -7,16 +7,43 @@ on:
         required: true
         default: 'patch'
 
+env:
+  CI: true
 jobs:
-  publish-npm:
-    runs-on: ubuntu-latest
+  publish:
+    name: Publish
+    runs-on: ubuntu-18.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
         with:
-          node-version: 12
-          registry-url: https://registry.npmjs.org/
+          fetch-depth: 0
+
+      - name: Attach Head
+        run: |
+          git checkout ${{ github.event.pull_request.base.ref }}
+      - name: Setup Node 14
+        uses: actions/setup-node@v1
+        with:
+          node-version: 14.13
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Use HTTPS registry
+        run: |
+          npm config set registry https://registry.npmjs.org/
+      - name: Set Git Identity
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/$GITHUB_REPOSITORY
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install and Build
+        run: |
+          yarn install
+          yarn build
+          git checkout yarn.lock
       - name: Set Bump
         shell: bash -ex {0}
         run: |
@@ -32,11 +59,18 @@ jobs:
           fi
           echo "BUMP=${BUMP}" >> $GITHUB_ENV
           echo "BUMP_EMOJI=${BUMP_EMOJI}" >> $GITHUB_ENV
+      - name: Authenticate With Registry
+        run: |
+          echo "@apollo-elements:registry=http://registry.npmjs.org/" > .npmrc
+          echo "registry=http://registry.npmjs.org/" >> .npmrc
+          echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> .npmrc
+          npm whoami
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - name: Publish
         run: |
-          yarn version --${BUMP} --no-git-tag-version --message "$BUMP_EMOJI %s"
-      - run: yarn
-      - run: yarn build
-      - run: yarn publish --access=public
+          yarn lerna publish ${BUMP} --yes --message "$BUMP_EMOJI %s" --ignore-scripts
         env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
