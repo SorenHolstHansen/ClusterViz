@@ -194,7 +194,7 @@ export class ClusterViz<CustomData> {
 			.crossValue((d: ClusterVizNode<CustomData>) => d.x)
 			.mainValue((d: ClusterVizNode<CustomData>) => d.y);
 
-		const annotationSeries = this.seriesSvgAnnotation()
+		const annotationSeries = (this.seriesSvgAnnotation() as any)
 			.notePadding(this.options.annotationNotePadding || 15)
 			.textWrap(this.options.annotationTextWrap || 120)
 			.type(annotationTypeToAnnotation[this.options.annotationType]);
