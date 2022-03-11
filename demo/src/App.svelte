@@ -82,6 +82,10 @@
 	}
 </script>
 
+<svelte:head>
+	<title>cluster-viz</title>
+</svelte:head>
+
 <main>
 	<div class="node-count">Nodes: {count}</div>
 	<div id="chart" />
@@ -136,7 +140,7 @@
 		bottom: 2rem;
 		right: 2rem;
 		width: 400px;
-		height: 300px;
+		height: 150px;
 		background: white;
 		border: 1px solid rgb(173, 169, 169);
 		border-radius: 1rem;

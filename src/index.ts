@@ -93,10 +93,10 @@ export type ClusterVizNode<T> = Point & {
 	data: T;
 };
 
-type ClusterVizEdge = {
-	source: Point;
-	target: Point;
-};
+// type ClusterVizEdge = {
+// 	source: Point;
+// 	target: Point;
+// };
 
 type BgPadding = number | { top: number; left: number; right: number; bottom: number };
 
