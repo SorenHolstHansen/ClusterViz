@@ -1,61 +1,68 @@
 <script lang="ts">
-	import { ClusterViz, ClusterVizNode } from 'cluster-viz';
+	import { ClusterViz } from '../../dist/index';
 	import { onMount } from 'svelte';
-	import { data } from './data';
 
-	let nodeSize = 50;
-	let edgeWidth = 0.5;
+	let nodeSize = 1;
 
 	type CustomData = {
 		lang: string;
 		year: number;
+		title: string;
+		author: string;
 	};
 
-	let viz: ClusterViz<CustomData>;
+	let count = 0;
+	let viz: ClusterViz;
 
-	function* createEdges() {
-		let countryNodes = {};
-		let edges = [];
-
-		let index = 0;
-		for (let row of data) {
-			let nodes = countryNodes[row.lang];
-			if (nodes) {
-				nodes.forEach((n) => {
-					if (n.year === row.year && Math.abs(n.x - row.x) + Math.abs(n.y - row.y) < 2) {
-						edges.push({
-							source: { x: n.x / 50, y: n.y / 50 },
-							target: { x: row.x / 50, y: row.y / 50 }
-						});
+	function loadData(viz: ClusterViz) {
+		// create a web worker that streams the chart data
+		const streamingLoaderWorker = new Worker('./streaming-tsv-parser.js');
+		streamingLoaderWorker.onmessage = ({ data: { items, totalBytes, finished } }) => {
+			const rows = items
+				.map((d) => ({
+					x: Number(d.x) / 50,
+					y: Number(d.y) / 50,
+					data: {
+						year: Number(d.date),
+						lang: d.language,
+						title: d.title,
+						author: d.first_author_name
 					}
-				});
-				countryNodes[row.lang] = [...nodes, row];
-			} else {
-				countryNodes[row.lang] = [row];
+				}))
+				.filter((d) => !!d.data.year);
+
+			count += rows.length;
+
+			viz.addNodes(rows);
+
+			if (finished) {
+				viz.registerColor();
 			}
-
-			index++;
-
-			if (index % 10000 === 0 || index === data.length - 1) {
-				yield edges;
-				edges = [];
-				countryNodes = {};
-			}
-		}
-
-		return edges;
+			viz.draw();
+		};
+		streamingLoaderWorker.postMessage('./data.tsv');
 	}
 
-	function redraw() {
-		if (viz) viz.drop();
+	onMount(() => {
+		draw();
+	});
+
+	function draw() {
+		if (viz) {
+			viz.drop();
+			count = 0;
+		}
 
 		viz = new ClusterViz<CustomData>({
 			elementId: '#chart',
 			createAnnotation: (node) => ({
 				note: {
-					label: node.data.lang + ' ' + node.data.year,
+					label: `
+						${node.data.author}\n
+						${node.data.lang}\n
+						${node.data.year}`,
 					bgPadding: 15,
-					title: node.data.lang
+					title: node.data.title
 				},
 				dx: 20,
 				dy: 20
@@ -65,39 +72,18 @@
 				return `hsl(${h}, 80%, 50%)`;
 			},
 			nodeSize,
-			edgeWidth,
 			annotationType: 'annotationLabel'
 		});
-		let newData: ClusterVizNode<CustomData>[] = data.map((v) => ({
-			x: v.x / 50,
-			y: v.y / 50,
-			data: {
-				year: v.year,
-				lang: v.lang
-			}
-		}));
-		viz.addNodes(newData);
-		let edgeGenerator = createEdges();
-
-		let interval = setInterval(() => {
-			let edges = edgeGenerator.next().value;
-			if (edges) {
-				viz.addEdges(edges);
-				viz.draw();
-			} else {
-				clearInterval(interval);
-			}
-		}, 100);
-
-		// viz.draw();
+		loadData(viz);
 	}
 
-	onMount(() => {
-		redraw();
-	});
+	function redraw() {
+		draw();
+	}
 </script>
 
 <main>
+	<div class="node-count">Nodes: {count}</div>
 	<div id="chart" />
 
 	<div class="controls">
@@ -105,20 +91,6 @@
 		<div class="nodesize-range">
 			<input type="range" id="nodesize" name="nodesize" bind:value={nodeSize} min={1} max={100} />
 			{nodeSize}
-		</div>
-
-		<label for="edgewidth">Edge width</label>
-		<div class="edgewidth-range">
-			<input
-				type="range"
-				id="edgewidth"
-				name="edgewidth"
-				bind:value={edgeWidth}
-				min={0}
-				max={2}
-				step={0.1}
-			/>
-			{edgeWidth}
 		</div>
 		<button on:click={redraw}>Redraw</button>
 	</div>
@@ -179,5 +151,11 @@
 	.nodesize-range {
 		display: flex;
 		align-items: center;
+	}
+
+	.node-count {
+		position: absolute;
+		top: 2rem;
+		left: 2rem;
 	}
 </style>

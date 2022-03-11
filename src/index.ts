@@ -71,7 +71,7 @@ type ClusterVizOptions<T> = {
 	 * The size of a node. Defaults to 1
 	 */
 	nodeSize?: number | ((node: ClusterVizNode<T>) => number);
-	edgeWidth?: number;
+	// edgeWidth?: number;
 };
 
 /**
@@ -155,9 +155,9 @@ export class ClusterViz<CustomData> {
 	private zoom: d3.ZoomBehavior<Element, unknown>;
 	private pointer: any;
 	private pointSeries: any;
-	private lineSeries: any;
+	// private lineSeries: any;
 	private nodes: ClusterVizNode<CustomData>[] = [];
-	private edges: Point[] = [];
+	// private edges: Point[] = [];
 	private quadTree: d3.Quadtree<ClusterVizNode<CustomData>>;
 	private annotation: Record<string, any> | undefined;
 
@@ -174,25 +174,28 @@ export class ClusterViz<CustomData> {
 		this.yScale = d3.scaleLinear().domain([-1, 1]);
 		this.xScaleOriginal = this.xScale.copy();
 		this.yScaleOriginal = this.yScale.copy();
+		this.quadTree = d3
+			.quadtree<ClusterVizNode<CustomData>>()
+			.x((d) => d.x)
+			.y((d) => d.y);
 
 		const nodeSize = this.options.nodeSize || 1;
 		this.pointSeries = fc
 			.seriesWebglPoint()
 			.equals((previousData: any, currentData: any) => previousData === currentData)
-			.pixelRatio(devicePixelRatio)
 			.size(nodeSize)
 			.crossValue((d: ClusterVizNode<CustomData>) => d.x)
 			.mainValue((d: ClusterVizNode<CustomData>) => d.y);
 
-		this.lineSeries = fc
-			.seriesWebglLine()
-			.equals((a: any, b: any) => a === b)
-			.defined((_, i: number) => (i + 1) % 3 !== 0)
-			.lineWidth(this.options.edgeWidth || 0.5)
-			.xScale(this.xScale)
-			.yScale(this.yScale)
-			.crossValue((d: ClusterVizNode<CustomData>) => d.x)
-			.mainValue((d: ClusterVizNode<CustomData>) => d.y);
+		// this.lineSeries = fc
+		// 	.seriesWebglLine()
+		// 	.equals((a: any, b: any) => a === b)
+		// 	.defined((_, i: number) => (i + 1) % 3 !== 0)
+		// 	.lineWidth(this.options.edgeWidth || 0.5)
+		// 	.xScale(this.xScale)
+		// 	.yScale(this.yScale)
+		// 	.crossValue((d: ClusterVizNode<CustomData>) => d.x)
+		// 	.mainValue((d: ClusterVizNode<CustomData>) => d.y);
 
 		const annotationSeries = (this.seriesSvgAnnotation() as any)
 			.notePadding(this.options.annotationNotePadding || 15)
@@ -204,11 +207,11 @@ export class ClusterViz<CustomData> {
 			.webglPlotArea(
 				fc
 					.seriesWebglMulti()
-					.series([this.lineSeries, this.pointSeries])
+					.series([/* this.lineSeries,  */ this.pointSeries])
 					.mapping((data, index, series) => {
 						switch (series[index]) {
-							case this.lineSeries:
-								return data.clustering.edges;
+							// case this.lineSeries:
+							// 	return data.clustering.edges;
 							case this.pointSeries:
 								return data.clustering.nodes;
 						}
@@ -282,7 +285,8 @@ export class ClusterViz<CustomData> {
 		return series;
 	}
 
-	private registerColor() {
+	/** Add colors to your clustering. If you have a lot of data, you should do this in the end */
+	registerColor() {
 		const colorFunc = this.options.nodeColor || (() => 'rgb(0,0,0)');
 		const fillColor = fc
 			.webglFillColor()
@@ -291,14 +295,14 @@ export class ClusterViz<CustomData> {
 
 		this.pointSeries.decorate((program) => fillColor(program));
 
-		this.lineSeries.decorate((program) => {
-			fc
-				.webglStrokeColor()
-				.value(() => {
-					return [0, 0, 0, 0.4];
-				})
-				.data(this.edges)(program);
-		});
+		// this.lineSeries.decorate((program) => {
+		// 	fc
+		// 		.webglStrokeColor()
+		// 		.value(() => {
+		// 			return [0, 0, 0, 0.4];
+		// 		})
+		// 		.data(this.edges)(program);
+		// });
 	}
 
 	private registerZoom() {
@@ -350,32 +354,28 @@ export class ClusterViz<CustomData> {
 	/** Adds rows to the data */
 	addNodes(newNodes: ClusterVizNode<CustomData>[]) {
 		this.nodes = this.nodes.concat(newNodes);
-		this.registerColor();
+		// this.registerColor();
 
-		this.quadTree = d3
-			.quadtree<ClusterVizNode<CustomData>>()
-			.x((d) => d.x)
-			.y((d) => d.y)
-			.addAll(this.nodes);
+		this.quadTree.addAll(this.nodes);
 	}
 
-	addEdges(newEdges: ClusterVizEdge[]) {
-		let edges = this.normalizeEdges(newEdges);
-		this.edges = this.edges.concat(edges);
-	}
+	// addEdges(newEdges: ClusterVizEdge[]) {
+	// 	let edges = this.normalizeEdges(newEdges);
+	// 	this.edges = this.edges.concat(edges);
+	// }
 
 	/**
 	 * Because of the way d3fc makes lines, we have to make lines between two edges, and to avoid displaying those, we make every n mod 2 node double, and hide that later in the displaying process
 	 */
-	private normalizeEdges(edges: ClusterVizEdge[]): Point[] {
-		let normalizedEdges: Point[] = [];
-		edges.forEach((edge) => {
-			normalizedEdges.push(edge.source);
-			normalizedEdges.push(edge.target);
-			normalizedEdges.push(edge.target);
-		});
-		return normalizedEdges;
-	}
+	// private normalizeEdges(edges: ClusterVizEdge[]): Point[] {
+	// 	let normalizedEdges: Point[] = [];
+	// 	edges.forEach((edge) => {
+	// 		normalizedEdges.push(edge.source);
+	// 		normalizedEdges.push(edge.target);
+	// 		normalizedEdges.push(edge.target);
+	// 	});
+	// 	return normalizedEdges;
+	// }
 
 	/**
 	 * Draw the clusters in the data to the chart.
@@ -384,7 +384,7 @@ export class ClusterViz<CustomData> {
 		this.element
 			.datum({
 				annotations: this.annotation ? [this.annotation] : [],
-				clustering: { nodes: this.nodes, edges: this.edges }
+				clustering: { nodes: this.nodes /*  edges: this.edges */ }
 			})
 			.call(this.chart);
 	}
