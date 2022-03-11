@@ -1,0 +1,42 @@
+name: Publish package to NPM
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: 'The kind of version bump. One of: patch, minor, major'
+        required: true
+        default: 'patch'
+
+jobs:
+  publish-npm:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 12
+          registry-url: https://registry.npmjs.org/
+      - name: Set Bump
+        shell: bash -ex {0}
+        run: |
+          if [ "${{ github.event.inputs.bump }}" = "major" ] ; then
+            BUMP=major
+            BUMP_EMOJI=🚀
+          elif [ "${{ github.event.inputs.bump }}" = "minor" ] ; then
+            BUMP=minor
+            BUMP_EMOJI=📦
+          else
+            BUMP=patch
+            BUMP_EMOJI=🔧
+          fi
+          echo "BUMP=${BUMP}" >> $GITHUB_ENV
+          echo "BUMP_EMOJI=${BUMP_EMOJI}" >> $GITHUB_ENV
+      - name: Publish
+        run: |
+          yarn version --${BUMP} --no-git-tag-version --message "$BUMP_EMOJI %s"
+      - run: yarn
+      - run: yarn build
+      - run: yarn publish --access=public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
