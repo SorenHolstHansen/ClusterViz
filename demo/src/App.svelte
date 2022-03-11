@@ -53,7 +53,7 @@
 			count = 0;
 		}
 
-		viz = new ClusterViz<CustomData>({
+		viz = new ClusterViz({
 			elementId: '#chart',
 			createAnnotation: (node) => ({
 				note: {
@@ -76,10 +76,6 @@
 		});
 		loadData(viz);
 	}
-
-	function redraw() {
-		draw();
-	}
 </script>
 
 <svelte:head>
@@ -89,6 +85,26 @@
 <main>
 	<div class="node-count">Nodes: {count}</div>
 	<div id="chart" />
+	<div class="info">
+		<div class="info-icon">i</div>
+		<div class="info-dropdown">
+			<h3>What is this?</h3>
+			<p>
+				A <a href="https://github.com/SorenHolstHansen/ClusterViz#readme">cluster-viz library</a>
+				based on
+				<a href="https://blog.scottlogic.com/2020/05/01/rendering-one-million-points-with-d3.html"
+					>this</a
+				> article.
+			</p>
+
+			<h3>Why is it so slow?</h3>
+			<p>
+				My hosting plan for the demo app is not the best, but it should be much faster when running <a
+					href="https://github.com/SorenHolstHansen/ClusterViz#readme">locally</a
+				>. If you <em>are</em> doing this locally, then I don't know
+			</p>
+		</div>
+	</div>
 
 	<div class="controls">
 		<label for="nodesize">Node Size</label>
@@ -96,7 +112,7 @@
 			<input type="range" id="nodesize" name="nodesize" bind:value={nodeSize} min={1} max={100} />
 			{nodeSize}
 		</div>
-		<button on:click={redraw}>Redraw</button>
+		<button on:click={draw}>Redraw</button>
 	</div>
 </main>
 
@@ -161,5 +177,37 @@
 		position: absolute;
 		top: 2rem;
 		left: 2rem;
+	}
+
+	.info {
+		position: absolute;
+		top: 2rem;
+		right: 2rem;
+	}
+
+	.info-dropdown {
+		display: none;
+		position: absolute;
+		right: 0;
+		width: 200px;
+		background: white;
+		border: 1px solid rgb(173, 169, 169);
+		border-radius: 1rem;
+		transition: opacity 0.2s;
+		padding: 0.5rem;
+	}
+
+	.info:hover .info-dropdown {
+		display: block;
+	}
+
+	.info-icon {
+		width: 20px;
+		height: 20px;
+		border: 1px solid gray;
+		border-radius: 100%;
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 </style>

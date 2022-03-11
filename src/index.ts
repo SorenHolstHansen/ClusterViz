@@ -237,7 +237,7 @@ export class ClusterViz<CustomData> {
 			);
 	}
 
-	seriesSvgAnnotation() {
+	private seriesSvgAnnotation() {
 		// the underlying component that we are wrapping
 		const d3Annotation = annotation();
 
