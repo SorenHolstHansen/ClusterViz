@@ -1,12 +1,24 @@
 {
 	"name": "cluster-viz",
 	"version": "1.0.0",
-	"private": true,
 	"main": "dist/index.js",
-	"workspaces": [
-		".",
-		"demo"
+	"license": "MIT",
+	"description": "Clustering visualization library based on this article https://blog.scottlogic.com/2020/05/01/rendering-one-million-points-with-d3.html",
+	"keywords": [
+		"clustering",
+		"visualization",
+		"charting",
+		"webgl",
+		"d3"
 	],
+	"homepage": "https://github.com/SorenHolstHansen/ClusterViz",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/SorenHolstHansen/ClusterViz"
+	},
+	"author": {
+		"name": "Søren Holst Hansen"
+	},
 	"scripts": {
 		"lint": "prettier --write \"**/*.{ts,tsx,md}\"",
 		"build": "tsc",
