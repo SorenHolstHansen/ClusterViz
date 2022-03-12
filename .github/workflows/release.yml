@@ -1,51 +1,37 @@
-name: Publish package to NPM
+name: Version and Release
+
 on:
   workflow_dispatch:
     inputs:
-      bump:
-        description: 'The kind of version bump. One of: patch, minor, major'
+      newversion:
+        description: 'Semantic Version Bump Type (major minor patch)'
         required: true
-        default: 'patch'
+
+env:
+  node_version: 14
 
 jobs:
-  publish-npm:
+  version_and_release:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout source code'
-        uses: 'actions/checkout@v2'
+      - uses: actions/checkout@v2.3.2
         with:
-          ref: ${{ github.ref }}
-
-      - name: Set Bump
-        shell: bash -ex {0}
-        run: |
-          if [ "${{ github.event.inputs.bump }}" = "major" ] ; then
-            BUMP=major
-            BUMP_EMOJI=🚀
-          elif [ "${{ github.event.inputs.bump }}" = "minor" ] ; then
-            BUMP=minor
-            BUMP_EMOJI=📦
-          else
-            BUMP=patch
-            BUMP_EMOJI=🔧
-          fi
-          echo "BUMP=${BUMP}" >> $GITHUB_ENV
-          echo "BUMP_EMOJI=${BUMP_EMOJI}" >> $GITHUB_ENV
-
-      - name: Bump version
-        run: yarn version --${BUMP} --message "$BUMP_EMOJI %s"
-
-      - name: Commit files
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          git commit -m "$BUMP_EMOJI %s" -a
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Push changes
-        run: git push -u origin main
-
-      - run: yarn publish --access=public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+          # fetch full history so things like auto-changelog work properly
+          fetch-depth: 0
+      - name: Use Node.js ${{ env.node_version }}
+        uses: actions/setup-node@v2.1.1
+        with:
+          node-version: ${{ env.node_version }}
+          # setting a registry enables the NODE_AUTH_TOKEN env variable where we can set an npm token.  REQUIRED
+          registry-url: 'https://registry.npmjs.org'
+      - run: npm i
+      - run: npm run build
+      - name: Version and publish to npm
+        uses: bcomnes/npm-bump@v2.0.2
+        with:
+          git_email: soerenhh@pm.me
+          git_username: ${{ github.actor }}
+          newversion: ${{ github.event.inputs.newversion }}
+          push_version_commit: true # if your prePublishOnly step pushes git commits, you can omit this input or set it to false.
+          github_token: ${{ secrets.GITHUB_TOKEN }} # built in actions token.  Passed tp gh-release if in use.
+          npm_token: ${{ secrets.NPM_TOKEN }} # user set secret token generated at npm
