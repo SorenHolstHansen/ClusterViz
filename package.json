@@ -1,6 +1,6 @@
 {
 	"name": "cluster-viz",
-	"version": "0.1.1",
+	"version": "0.1.3",
 	"main": "dist/index.js",
 	"license": "MIT",
 	"description": "Clustering visualization library based on this article https://blog.scottlogic.com/2020/05/01/rendering-one-million-points-with-d3.html",
