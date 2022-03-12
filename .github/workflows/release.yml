@@ -11,31 +11,10 @@ jobs:
   publish-npm:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Attach Head
-        run: |
-          git checkout ${{ github.event.pull_request.base.ref }}
-
-      - uses: actions/setup-node@v2
+      - name: 'Checkout source code'
+        uses: 'actions/checkout@v2'
         with:
-          node-version: 12
-          registry-url: https://registry.npmjs.org/
-
-      - name: Set Git Identity
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/$GITHUB_REPOSITORY
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install and Build
-        run: |
-          yarn install
-          yarn build
-          git checkout yarn.lock
+          ref: ${{ github.ref }}
 
       - name: Set Bump
         shell: bash -ex {0}
@@ -53,9 +32,17 @@ jobs:
           echo "BUMP=${BUMP}" >> $GITHUB_ENV
           echo "BUMP_EMOJI=${BUMP_EMOJI}" >> $GITHUB_ENV
 
-      - name: Bump package.json
+      - name: Bump version
+        run: yarn version --${BUMP} --message "$BUMP_EMOJI %s"
+
+      - name: Commit files
         run: |
-          yarn version --${BUMP} --message "$BUMP_EMOJI %s"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git commit -m "$BUMP_EMOJI %s" -a
+
+      - name: Push changes
+        run: git push -u origin main
 
       - run: yarn publish --access=public
         env:
