@@ -6,6 +6,7 @@ on:
       newversion:
         description: 'Semantic Version Bump Type (major minor patch)'
         required: true
+        default: 'patch'
 
 jobs:
   version_and_release:
